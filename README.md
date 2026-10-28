@@ -180,6 +180,11 @@ the Docker Hub token on stdin.
 For Streamable HTTP, configure the agent's MCP URL as
 `http://127.0.0.1:3000/mcp` after starting the container.
 
+HTTP Host and Origin validation allow only `localhost`, `127.0.0.1`, `[::1]`,
+and `centermcp.com`. This supports the CenterMCP reverse proxy while retaining
+host validation. Set `HOST=0.0.0.0` and the platform's `PORT` when deploying
+in a container; the listening address does not change the allowed hostnames.
+
 For an agent that only launches MCP servers over stdio, set
 `MCP_TRANSPORT=stdio` and use the following Docker configuration.
 

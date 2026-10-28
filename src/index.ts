@@ -19,8 +19,8 @@ import { createServer } from "node:http";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import { createMcpHandler, McpServer } from "@modelcontextprotocol/server";
 import {
-  localhostHostValidation,
-  localhostOriginValidation,
+  hostHeaderValidation,
+  originValidation,
   toNodeHandler,
 } from "@modelcontextprotocol/node";
 import * as line from "@line/bot-sdk";
@@ -101,8 +101,9 @@ if (transport === "stdio") {
       console.error("MCP HTTP server error:", error);
     },
   });
-  const validateHost = localhostHostValidation();
-  const validateOrigin = localhostOriginValidation();
+  const allowedHostnames = ["localhost", "127.0.0.1", "[::1]", "centermcp.com"];
+  const validateHost = hostHeaderValidation(allowedHostnames);
+  const validateOrigin = originValidation(allowedHostnames);
   const httpServer = createServer((request, response) => {
     if (
       !validateHost(request, response) ||
