@@ -37,7 +37,7 @@ jobs:
       - name: Build
         run: npm run build
       - name: Test
-        run: npm test
+        run: npm exec -- vitest run
       - name: publint
         run: npm run check:publint
 

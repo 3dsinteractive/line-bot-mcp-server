@@ -1,12 +1,14 @@
 FROM node:26.12-alpine AS builder
 
-COPY . /app
-
 WORKDIR /app
 
-RUN --mount=type=cache,target=/root/.npm-production npm ci --ignore-scripts
+COPY package.json package-lock.json ./
 
-RUN --mount=type=cache,target=/root/.npm npm run build
+RUN --mount=type=cache,target=/root/.npm npm ci --ignore-scripts --prefer-offline --no-audit --no-fund
+
+COPY . .
+
+RUN npm run build
 
 # --- Release Stage ---
 FROM node:26-alpine AS release
@@ -43,24 +45,19 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 # Copy the built code and necessary package files from our builder stage
-COPY --from=builder /app/dist /app/dist
-COPY --from=builder /app/package.json /app/package.json
-COPY --from=builder /app/package-lock.json /app/package-lock.json
-COPY --from=builder /app/richmenu-template /app/richmenu-template
+WORKDIR /app
+
+# Keep production dependencies cached when only application code changes.
+COPY package.json package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci --ignore-scripts --omit=dev --prefer-offline --no-audit --no-fund
+
+COPY --from=builder --chown=appuser:appgroup /app/dist /app/dist
+COPY --from=builder --chown=appuser:appgroup /app/richmenu-template /app/richmenu-template
 
 ENV NODE_ENV=production
 ENV MCP_TRANSPORT=http HOST=0.0.0.0 PORT=3000
 
 EXPOSE 3000
-
-WORKDIR /app
-
-# Give our new 'appuser' ownership of the application files inside /app
-# Needs to happen after copying the files over
-RUN chown -R appuser:appgroup /app
-
-# Install *only* the production dependencies
-RUN npm ci --ignore-scripts --omit=dev
 
 # Now, switch to running as our non-root user for the actual app process
 USER appuser
