@@ -15,8 +15,14 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+import { createServer } from "node:http";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
-import { McpServer } from "@modelcontextprotocol/server";
+import { createMcpHandler, McpServer } from "@modelcontextprotocol/server";
+import {
+  localhostHostValidation,
+  localhostOriginValidation,
+  toNodeHandler,
+} from "@modelcontextprotocol/node";
 import * as line from "@line/bot-sdk";
 import { LINE_BOT_MCP_SERVER_VERSION, USER_AGENT } from "./version.js";
 import CancelRichMenuDefault from "./tools/cancelRichMenuDefault.js";
@@ -50,32 +56,86 @@ const lineBotClient = line.LineBotClient.fromChannelAccessToken({
   },
 });
 
-serveStdio(
-  () => {
-    const server = new McpServer({
-      name: "line-bot",
-      version: LINE_BOT_MCP_SERVER_VERSION,
-    });
+function createLineBotServer() {
+  const server = new McpServer({
+    name: "line-bot",
+    version: LINE_BOT_MCP_SERVER_VERSION,
+  });
 
-    new PushTextMessage(lineBotClient, destinationId).register(server);
-    new PushFlexMessage(lineBotClient, destinationId).register(server);
-    new BroadcastTextMessage(lineBotClient).register(server);
-    new BroadcastFlexMessage(lineBotClient).register(server);
-    new GetProfile(lineBotClient, destinationId).register(server);
-    new GetMessageQuota(lineBotClient).register(server);
-    new GetRichMenuList(lineBotClient).register(server);
-    new DeleteRichMenu(lineBotClient).register(server);
-    new SetRichMenuDefault(lineBotClient).register(server);
-    new CancelRichMenuDefault(lineBotClient).register(server);
-    new CreateRichMenu(lineBotClient).register(server);
-    new GetFollowerIds(lineBotClient).register(server);
-    new GetGroupSummary(lineBotClient).register(server);
+  new PushTextMessage(lineBotClient, destinationId).register(server);
+  new PushFlexMessage(lineBotClient, destinationId).register(server);
+  new BroadcastTextMessage(lineBotClient).register(server);
+  new BroadcastFlexMessage(lineBotClient).register(server);
+  new GetProfile(lineBotClient, destinationId).register(server);
+  new GetMessageQuota(lineBotClient).register(server);
+  new GetRichMenuList(lineBotClient).register(server);
+  new DeleteRichMenu(lineBotClient).register(server);
+  new SetRichMenuDefault(lineBotClient).register(server);
+  new CancelRichMenuDefault(lineBotClient).register(server);
+  new CreateRichMenu(lineBotClient).register(server);
+  new GetFollowerIds(lineBotClient).register(server);
+  new GetGroupSummary(lineBotClient).register(server);
 
-    return server;
-  },
-  {
+  return server;
+}
+
+const transport = process.env.MCP_TRANSPORT || "http";
+
+if (transport === "stdio") {
+  void serveStdio(createLineBotServer, {
     onerror(error) {
       console.error("MCP stdio server error:", error);
     },
-  },
-);
+  });
+} else if (transport === "http") {
+  const port = Number(process.env.PORT || "3000");
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    console.error("PORT must be an integer between 1 and 65535.");
+    process.exit(1);
+  }
+
+  const host = process.env.HOST || "127.0.0.1";
+  const handler = createMcpHandler(createLineBotServer);
+  const nodeHandler = toNodeHandler(handler, {
+    onerror(error) {
+      console.error("MCP HTTP server error:", error);
+    },
+  });
+  const validateHost = localhostHostValidation();
+  const validateOrigin = localhostOriginValidation();
+  const httpServer = createServer((request, response) => {
+    if (
+      !validateHost(request, response) ||
+      !validateOrigin(request, response)
+    ) {
+      return;
+    }
+    if (request.url?.split("?", 1)[0] === "/healthz") {
+      response.writeHead(200, { "Content-Type": "text/plain" });
+      response.end("ok\n");
+      return;
+    }
+    if (request.url?.split("?", 1)[0] !== "/mcp") {
+      response.writeHead(404);
+      response.end();
+      return;
+    }
+    void nodeHandler(request, response);
+  });
+
+  httpServer.listen(port, host, () => {
+    console.error(
+      `MCP Streamable HTTP server listening on http://${host}:${port}/mcp`,
+    );
+  });
+
+  const shutdown = () => {
+    httpServer.close();
+    void handler.close();
+  };
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
+} else {
+  console.error("MCP_TRANSPORT must be 'http' or 'stdio'.");
+  process.exit(1);
+}

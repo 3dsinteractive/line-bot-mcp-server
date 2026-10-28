@@ -49,6 +49,9 @@ COPY --from=builder /app/package-lock.json /app/package-lock.json
 COPY --from=builder /app/richmenu-template /app/richmenu-template
 
 ENV NODE_ENV=production
+ENV MCP_TRANSPORT=http HOST=0.0.0.0 PORT=3000
+
+EXPOSE 3000
 
 WORKDIR /app
 

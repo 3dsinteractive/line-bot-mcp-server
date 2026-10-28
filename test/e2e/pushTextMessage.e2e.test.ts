@@ -101,6 +101,7 @@ describe("push_text_message E2E with localhost mock LINE API", () => {
           command: process.execPath,
           args: [DIST_SERVER_ENTRY],
           env: {
+            MCP_TRANSPORT: "stdio",
             CHANNEL_ACCESS_TOKEN: "test-channel-access-token",
             DESTINATION_USER_ID: "U_TEST_DESTINATION",
             LINE_MESSAGING_API_BASE_URL: mockApi.baseUrl,
@@ -161,6 +162,7 @@ describe("push_text_message E2E with localhost mock LINE API", () => {
           command: process.execPath,
           args: [DIST_SERVER_ENTRY],
           env: {
+            MCP_TRANSPORT: "stdio",
             CHANNEL_ACCESS_TOKEN: "test-channel-access-token",
             DESTINATION_USER_ID: "U_TEST_DESTINATION",
             LINE_MESSAGING_API_BASE_URL: mockApi.baseUrl,

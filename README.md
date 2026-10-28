@@ -114,6 +114,7 @@ Set the environment variables or arguments as follows:
       ],
       "env": {
         "NPM_CONFIG_IGNORE_SCRIPTS": "true",
+        "MCP_TRANSPORT": "stdio",
         "CHANNEL_ACCESS_TOKEN" : "FILL_HERE",
         "DESTINATION_USER_ID" : "FILL_HERE"
       }
@@ -145,13 +146,41 @@ Build the Docker image:
 docker build -t line/line-bot-mcp-server .
 ```
 
+To build and start the MCP server from this repository in one command, set your
+LINE channel access token and run:
+
+```bash
+export CHANNEL_ACCESS_TOKEN="your-channel-access-token"
+./docker-build.sh
+```
+
+The script builds `line-bot-mcp-server:local` and starts a container in the
+background. Connect a Streamable HTTP MCP client to
+`http://127.0.0.1:3000/mcp`. The endpoint is published only on the host's
+loopback interface. Set `PORT` to use a different host port, and set
+`DESTINATION_USER_ID` if your tools need a default recipient.
+
+Use `./docker-build.sh build` to build only, `./docker-build.sh start` to start
+an existing image, and `./docker-build.sh stop` to stop it. A custom image name
+can be passed as the second argument, such as
+`./docker-build.sh build my-image:dev`.
+
+To publish an image to Docker Hub, use
+`./docker-build.sh push <repository> <tag> <Docker Hub username>` and provide
+the Docker Hub token on stdin.
+
 ### Step 3: Configure AI Agent
+
+For Streamable HTTP, configure the agent's MCP URL as
+`http://127.0.0.1:3000/mcp` after starting the container.
+
+For an agent that only launches MCP servers over stdio, set
+`MCP_TRANSPORT=stdio` and use the following Docker configuration.
 
 Please add the following configuration for an AI Agent like Claude Desktop or Cline.
 
 Set the environment variables or arguments as follows:
 
-- `mcpServers.args`: (required) The path to `line-bot-mcp-server`.
 - `CHANNEL_ACCESS_TOKEN`: (required) Channel Access Token. You can confirm this by following [this instructions](https://developers.line.biz/en/docs/basics/channel-access-token/#long-lived-channel-access-token).
 - `DESTINATION_USER_ID`: (optional) The default user ID of the recipient. If the Tool's input does not include `userId`, `DESTINATION_USER_ID` is required.
 You can confirm this by following [this instructions](https://developers.line.biz/en/docs/messaging-api/getting-user-ids/#get-own-user-id).
@@ -170,6 +199,8 @@ You can confirm this by following [this instructions](https://developers.line.bi
         "CHANNEL_ACCESS_TOKEN",
         "-e",
         "DESTINATION_USER_ID",
+        "-e",
+        "MCP_TRANSPORT=stdio",
         "line/line-bot-mcp-server"
       ],
       "env": {

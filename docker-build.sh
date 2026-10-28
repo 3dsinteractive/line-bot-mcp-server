@@ -4,6 +4,70 @@ set +x
 set -euo pipefail
 
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+readonly COMMAND="${1:-local}"
+
+case "${COMMAND}" in
+  local|build|start|stop)
+    if (( $# > 2 )); then
+      echo "Usage: $0 [local|build|start|stop] [image:tag]" >&2
+      exit 2
+    fi
+    readonly LOCAL_IMAGE="${2:-line-bot-mcp-server:local}"
+    readonly CONTAINER_NAME="${CONTAINER_NAME:-line-bot-mcp-server}"
+    readonly HOST_PORT="${PORT:-3000}"
+    if [[ "${COMMAND}" == stop ]]; then
+      docker stop "${CONTAINER_NAME}"
+      exit 0
+    fi
+    if [[ "${COMMAND}" != build && -z "${CHANNEL_ACCESS_TOKEN:-}" ]]; then
+      echo "CHANNEL_ACCESS_TOKEN is required to start the MCP server." >&2
+      exit 1
+    fi
+    if [[ "${COMMAND}" != start ]]; then
+      docker build --pull --tag "${LOCAL_IMAGE}" "${SCRIPT_DIR}" >&2
+      echo "Built ${LOCAL_IMAGE}" >&2
+    fi
+    if [[ "${COMMAND}" != build ]]; then
+      if [[ "${MCP_TRANSPORT:-http}" == stdio ]]; then
+        exec docker run --rm -i \
+          --env CHANNEL_ACCESS_TOKEN \
+          --env DESTINATION_USER_ID \
+          --env LINE_MESSAGING_API_BASE_URL \
+          --env MCP_TRANSPORT=stdio \
+          "${LOCAL_IMAGE}"
+      fi
+      if [[ "${MCP_TRANSPORT:-http}" != http ]]; then
+        echo "MCP_TRANSPORT must be 'http' or 'stdio'." >&2
+        exit 1
+      fi
+      if [[ ! "${HOST_PORT}" =~ ^[1-9][0-9]*$ ]] || (( HOST_PORT > 65535 )); then
+        echo "PORT must be an integer between 1 and 65535." >&2
+        exit 1
+      fi
+      docker run --detach --rm \
+        --name "${CONTAINER_NAME}" \
+        --publish "127.0.0.1:${HOST_PORT}:3000" \
+        --env CHANNEL_ACCESS_TOKEN \
+        --env DESTINATION_USER_ID \
+        --env LINE_MESSAGING_API_BASE_URL \
+        --env MCP_TRANSPORT=http \
+        "${LOCAL_IMAGE}"
+      echo "MCP endpoint: http://127.0.0.1:${HOST_PORT}/mcp"
+    fi
+    exit 0
+    ;;
+  push)
+    shift
+    ;;
+  *)
+    if (( $# != 3 )); then
+      echo "Usage: $0 [local|build|start|stop] [image:tag]" >&2
+      echo "       $0 push <repository> <tag> <Docker Hub username> < token" >&2
+      exit 2
+    fi
+    ;;
+esac
+
 readonly IMAGE_REPOSITORY="${1:?Image repository is required}"
 readonly IMAGE_TAG="${2:?Image tag is required}"
 readonly DOCKER_HUB_USERNAME="${3:?Docker Hub username is required}"
