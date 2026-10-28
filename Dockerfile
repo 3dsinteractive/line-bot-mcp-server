@@ -1,4 +1,6 @@
-FROM node:26.12-alpine AS builder
+FROM node:26.12-alpine AS base
+
+FROM base AS builder
 
 WORKDIR /app
 
@@ -6,12 +8,21 @@ COPY package.json package-lock.json ./
 
 RUN --mount=type=cache,target=/root/.npm npm ci --ignore-scripts --prefer-offline --no-audit --no-fund
 
-COPY . .
+COPY tsconfig.json ./
+COPY src ./src
+COPY scripts ./scripts
 
-RUN npm run build
+# Formatting and test type checks run in CI via npm run build.
+RUN npm run build:compile
+
+# Install independently of Chromium/fonts so these steps can run in parallel.
+FROM base AS production-deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci --ignore-scripts --omit=dev --prefer-offline --no-audit --no-fund
 
 # --- Release Stage ---
-FROM node:26-alpine AS release
+FROM base AS release
 
 # Install necessary tools and base fonts
 RUN apk add --no-cache \
@@ -23,13 +34,12 @@ RUN apk add --no-cache \
     chromium \
     nss
 
-# Download and install Japanese fonts from GitHub
+# Noto CJK (including Japanese) is already provided by font-noto-cjk above.
+# Keep IPAex fallback fonts; bound network waits and fail on HTTP errors.
 RUN mkdir -p /usr/share/fonts/truetype/google && \
-    # Noto Sans JP from GitHub
-    curl -L "https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Japanese/NotoSansJP-Regular.otf" -o /usr/share/fonts/truetype/google/NotoSansJP-Regular.otf && \
-    curl -L "https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Japanese/NotoSansJP-Bold.otf" -o /usr/share/fonts/truetype/google/NotoSansJP-Bold.otf && \
-    # IPAex Gothic font as fallback
-    curl -L "https://moji.or.jp/wp-content/ipafont/IPAexfont/IPAexfont00401.zip" -o ipaex.zip && \
+    curl --fail --location --show-error \
+      --connect-timeout 10 --max-time 120 --retry 2 --retry-max-time 180 \
+      "https://moji.or.jp/wp-content/ipafont/IPAexfont/IPAexfont00401.zip" -o ipaex.zip && \
     unzip ipaex.zip && \
     cp IPAexfont00401/*.ttf /usr/share/fonts/truetype/google/ && \
     rm -rf IPAexfont00401 ipaex.zip
@@ -49,10 +59,10 @@ WORKDIR /app
 
 # Keep production dependencies cached when only application code changes.
 COPY package.json package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci --ignore-scripts --omit=dev --prefer-offline --no-audit --no-fund
+COPY --from=production-deps /app/node_modules ./node_modules
 
 COPY --from=builder --chown=appuser:appgroup /app/dist /app/dist
-COPY --from=builder --chown=appuser:appgroup /app/richmenu-template /app/richmenu-template
+COPY --chown=appuser:appgroup richmenu-template /app/richmenu-template
 
 ENV NODE_ENV=production
 ENV MCP_TRANSPORT=http HOST=0.0.0.0 PORT=3000

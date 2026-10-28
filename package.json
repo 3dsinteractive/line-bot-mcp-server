@@ -15,7 +15,8 @@
     "richmenu-template"
   ],
   "scripts": {
-    "build": "npm run format:check && npm run typecheck:test && npm run clean && tsc && node scripts/chmod-bin.mjs",
+    "build": "npm run format:check && npm run typecheck:test && npm run build:compile",
+    "build:compile": "npm run clean && tsc && node scripts/chmod-bin.mjs",
     "prettier": "prettier \"src/**/*.ts\" \"test/**/*.ts\"",
     "format": "npm run prettier -- --write",
     "format:check": "npm run prettier -- -l",

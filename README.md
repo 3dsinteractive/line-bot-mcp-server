@@ -146,6 +146,12 @@ Build the Docker image:
 docker build -t line/line-bot-mcp-server .
 ```
 
+The first build installs Chromium and fonts and can take longer. Keep Docker's
+build cache on the server for subsequent builds; avoid `--no-cache` and clearing
+the builder cache between deployments. The Docker build compiles production code
+only. Run `npm run build` for formatting and test type checks (also run in CI).
+For detailed step timings, use `docker build --progress=plain -t line/line-bot-mcp-server .`.
+
 To build and start the MCP server from this repository in one command, set your
 LINE channel access token and run:
 
