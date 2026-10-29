@@ -65,9 +65,9 @@ COPY --from=builder --chown=appuser:appgroup /app/dist /app/dist
 COPY --chown=appuser:appgroup richmenu-template /app/richmenu-template
 
 ENV NODE_ENV=production
-ENV MCP_TRANSPORT=http HOST=0.0.0.0 PORT=3000
+ENV MCP_TRANSPORT=http HOST=0.0.0.0 PORT=8000
 
-EXPOSE 3000
+EXPOSE 8000
 
 # Now, switch to running as our non-root user for the actual app process
 USER appuser

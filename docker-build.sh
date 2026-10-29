@@ -14,7 +14,7 @@ case "${COMMAND}" in
     fi
     readonly LOCAL_IMAGE="${2:-line-bot-mcp-server:local}"
     readonly CONTAINER_NAME="${CONTAINER_NAME:-line-bot-mcp-server}"
-    readonly HOST_PORT="${PORT:-3000}"
+    readonly HOST_PORT="${PORT:-8000}"
     if [[ "${COMMAND}" == stop ]]; then
       docker stop "${CONTAINER_NAME}"
       exit 0
@@ -46,7 +46,7 @@ case "${COMMAND}" in
       fi
       docker run --detach --rm \
         --name "${CONTAINER_NAME}" \
-        --publish "127.0.0.1:${HOST_PORT}:3000" \
+        --publish "127.0.0.1:${HOST_PORT}:8000" \
         --env CHANNEL_ACCESS_TOKEN \
         --env DESTINATION_USER_ID \
         --env LINE_MESSAGING_API_BASE_URL \

@@ -162,7 +162,7 @@ export CHANNEL_ACCESS_TOKEN="your-channel-access-token"
 
 The script builds `line-bot-mcp-server:local` and starts a container in the
 background. Connect a Streamable HTTP MCP client to
-`http://127.0.0.1:3000/mcp`. The endpoint is published only on the host's
+`http://127.0.0.1:8000/mcp`. The endpoint is published only on the host's
 loopback interface. Set `PORT` to use a different host port, and set
 `DESTINATION_USER_ID` if your tools need a default recipient.
 
@@ -178,7 +178,7 @@ the Docker Hub token on stdin.
 ### Step 3: Configure AI Agent
 
 For Streamable HTTP, configure the agent's MCP URL as
-`http://127.0.0.1:3000/mcp` after starting the container.
+`http://127.0.0.1:8000/mcp` after starting the container.
 
 HTTP Host and Origin validation allow only `localhost`, `127.0.0.1`, `[::1]`,
 and `centermcp.com`. This supports the CenterMCP reverse proxy while retaining

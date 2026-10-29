@@ -149,11 +149,11 @@ export CHANNEL_ACCESS_TOKEN="your-channel-access-token"
 ./docker-build.sh
 ```
 
-MCPクライアントの接続先は `http://127.0.0.1:3000/mcp` です。ホスト側のポートを変更する場合は `PORT` を設定してください。`./docker-build.sh build` はビルドのみ、`./docker-build.sh start` は起動のみ、`./docker-build.sh stop` は停止です。
+MCPクライアントの接続先は `http://127.0.0.1:8000/mcp` です。ホスト側のポートを変更する場合は `PORT` を設定してください。`./docker-build.sh build` はビルドのみ、`./docker-build.sh start` は起動のみ、`./docker-build.sh stop` は停止です。
 
 ### Step 3: AI Agentを設定
 
-Streamable HTTPに対応するAI Agentには `http://127.0.0.1:3000/mcp` を指定します。以下のDocker設定はstdio接続が必要なAI Agent向けです。
+Streamable HTTPに対応するAI Agentには `http://127.0.0.1:8000/mcp` を指定します。以下のDocker設定はstdio接続が必要なAI Agent向けです。
 
 Claude DesktopやClaudeなどのAI Agentに次の設定を追加してください。
 
